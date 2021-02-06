@@ -14,11 +14,11 @@ type User struct{
 }
 
 // Получить все записи из бд
-func GetUsers()map[string]interface{}{
+func GetUsers()(interface{}, error){
 	return map[string]interface{}{
 		"success":true,
-		"users":Db,
-	}
+		"user":Db.users,
+	}, nil
 }
 
 // Сгенерировать уникальный id
@@ -30,71 +30,61 @@ func HashId()string{
 }
 
 // Получить юзера по id
-func(u *User)GetUser()map[string]interface{}{
-	if user, ok := Db[u.Id]; ok {
+func(u *User)GetUser()(interface{}, error){
+	if user, ok := Db.users[u.Id]; ok {
 		return map[string]interface{}{
 			"success":true,
 			"user":user,
-		}
+		}, nil
 	}else{
 		return map[string]interface{}{
 			"success":false,
 			"msg":"User not found",
-		}
+		}, nil
 	}
 }
 
 // Создать юзера
-func(u *User)CreateUser()map[string]interface{}{
+func(u *User)CreateUser(){
+	Db.Mutex.Lock()
+	defer Db.Mutex.Unlock()
 	u.Id = HashId()
-	Db[u.Id] = u
-
-	_ = refreshDb()
-	
-	return map[string]interface{}{
-		"success":true,
-		"msg":"User has been created",
-		"user":u,
-	}
+	Db.add <- u
 }
 
 // Обновить юзера
-func(u *User)UpdateUser()map[string]interface{}{
+func(u *User)UpdateUser()(interface{}, error){
 
-	if _, ok := Db[u.Id]; !ok {
+	if _, ok := Db.users[u.Id]; !ok {
 		return map[string]interface{}{
 			"success":false,
 			"msg":"User not found",
-		}
+		}, nil
 	}
 
-	Db[u.Id] = u
-
-	_ = refreshDb()
+	Db.update <- u
 
 	return map[string]interface{}{
 		"success":true,
 		"msg":"User has been updated",
 		"user":u,
-	}
+	}, nil
 }
 
 // Удалить юзера
-func(u *User)DeleteUser()map[string]interface{}{
-	if _, ok := Db[u.Id]; !ok {
+func(u *User)DeleteUser()(interface{}, error){
+	if _, ok := Db.users[u.Id]; !ok {
 		return map[string]interface{}{
 			"success":false,
 			"msg":"User not found",
-		}
+		}, nil
 	}
 
-	delete(Db, u.Id)
-
-	_ = refreshDb()
+	Db.delete <- u.Id
 
 	return map[string]interface{}{
 		"success":true,
 		"msg":"User has been deleted",
 		"user":u,
-	}
+	}, nil
 }

@@ -4,6 +4,8 @@ import(
 	"encoding/json"
 	"io/ioutil"
 	"os"
+	"sync"
+	"time"
 	"fmt"
 )
 
@@ -14,13 +16,28 @@ type Users struct{
 
 
 // Глобальный массив с пользователями
-var Db map[string]*User
+type DataBase struct{
+	Mutex *sync.Mutex
+	users map[string]*User
+	add chan *User
+	update chan *User
+	delete chan string
+	newUsers []*User
+}
 
+var Db *DataBase
 
 // Инициализация базы данных, парсинг json файла
 func InitDB(){
 
-	Db = make(map[string]*User)
+	Db = &DataBase{
+		Mutex: new(sync.Mutex),
+		users: make(map[string]*User),
+		add: make(chan *User),
+		update: make(chan *User),
+		delete: make(chan string),
+		newUsers: make([]*User, 0),
+	}
 
 	var u Users
 
@@ -35,25 +52,42 @@ func InitDB(){
 	json.Unmarshal(byteValue, &u)
 
 	for _, v := range(u.Users){
-		Db[v.Id] = v
+		Db.users[v.Id] = v
 	}
 
 }
 
-// Обновить значения json файла базы данных
-func refreshDb()error{
-	var u Users
+// Прослушивание каналов для работы с дб
+func(db *DataBase)RunDBHub(){
+	ticker := time.NewTicker(3 * time.Second)
+	for{
+		select{
+		case u := <-db.add:	// Добавить юзера
+			db.users[u.Id] = u
+			db.newUsers = append(db.newUsers, u)
+		case u := <-db.update: // Обновить юзера
+			db.users[u.Id] = u
+		case id := <- db.delete: // Удалить юзера
+			delete(db.users, id)
+		case <-ticker.C: // Обновлять js бд каждые 3 секунды
+			if len(db.newUsers) > 0{
 
-	for _, v := range(Db){
-		u.Users = append(u.Users, v)
+				var u Users
+
+				for _, v := range(db.users){
+					u.Users = append(u.Users, v)
+				}
+
+				file, _ := json.MarshalIndent(u, "", " ")
+				err := ioutil.WriteFile("users.json", file, 0644)
+				if err != nil {
+				    fmt.Println(err)
+				}else{
+					db.newUsers = make([]*User, 0)
+				}
+
+				fmt.Println("New users have been added")
+			}
+		}
 	}
-
-	file, _ := json.MarshalIndent(u, "", " ")
-	err := ioutil.WriteFile("users.json", file, 0644)
-	if err != nil {
-	    return err
-	}
-
-	return nil
-
 }

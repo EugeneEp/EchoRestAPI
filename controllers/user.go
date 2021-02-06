@@ -14,17 +14,20 @@ func CreateUser(c echo.Context) error {
 		return err
 	}
 
-	res := u.CreateUser()
+	go u.CreateUser()
 
-	return utils.Response(c, res)
+	return utils.Response(c, map[string]interface{}{
+		"success":true,
+		"msg":"User has been created",
+	}, nil)
 }
 
 // Получить юзеров
 func GetUsers(c echo.Context) error {
 
-	res := models.GetUsers()
+	res, resErr := models.GetUsers()
 
-	return utils.Response(c, res)
+	return utils.Response(c, res, resErr)
 }
 
 // Получить конкретного юзера
@@ -34,9 +37,9 @@ func GetUser(c echo.Context) error {
 
 	u.Id = c.Param("id")
 
-	res := u.GetUser()
+	res, resErr := u.GetUser()
 
-	return utils.Response(c, res)
+	return utils.Response(c, res, resErr)
 }
 
 // Обновить юзера
@@ -50,9 +53,9 @@ func UpdateUser(c echo.Context) error {
 		return err
 	}
 
-	res := u.UpdateUser()
+	res, resErr := u.UpdateUser()
 
-	return utils.Response(c, res)
+	return utils.Response(c, res, resErr)
 }
 
 // Удалить юзера
@@ -61,7 +64,7 @@ func DeleteUser(c echo.Context) error {
 
 	u.Id = c.Param("id")
 
-	res := u.DeleteUser()
+	res, resErr := u.DeleteUser()
 
-	return utils.Response(c, res)
+	return utils.Response(c, res, resErr)
 }

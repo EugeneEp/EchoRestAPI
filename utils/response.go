@@ -7,8 +7,8 @@ import (
 
 // Функция отправки ответа от сервера
 
-func Response(c echo.Context, res map[string]interface{}) error {
-	if res["success"] == false {
+func Response(c echo.Context, res interface{}, err error) error {
+	if err != nil {
 		return c.JSON(http.StatusBadRequest, res)
 	}else{
 		return c.JSON(http.StatusOK, res)
